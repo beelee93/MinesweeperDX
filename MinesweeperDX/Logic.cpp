@@ -4,9 +4,31 @@
 // by "user"
 int Nvisible;
 
+// number of none-bomb cells
+int nonecount;
+
 int GetNvisible()
 {
 	return Nvisible;
+}
+
+int GetNoneCount()
+{
+	return nonecount;
+}
+
+int GetNoneCount(Box** grid, int rowcount, int colcount)
+{
+	int sum = 0;
+	for (int r = 0; r < rowcount; r++)
+	{
+		for (int c = 0; c < colcount; c++)
+		{
+			if (!grid[r][c].gotBomb && !grid[r][c].isShown)
+				sum++;
+		}
+	}
+	return sum;
 }
 
 void ClearBox(Box &cell)
@@ -45,6 +67,7 @@ void Update(Box** parent, Box& cell, float elapsed, int rowcount, int colcount)
 
 		if (cell.animPhase <= 0.01)
 		{
+			nonecount--; // this cell is finally revealed, decrement counter
 			cell.isShown = 1;
 			cell.invokeShow = 0;
 		}
@@ -115,14 +138,16 @@ void Reveal(Box** arr, int thisr, int thisc, int rowcount, int colcount, BOOL us
 	
 	if ((thisr < 0) || (thisr >= rowcount) || (thisc < 0) || (thisc >= colcount)) return; // do not count past edges
 	if (arr[thisr][thisc].isShown) return; // do not recount counted squares
+
 	if (!invokeStartAnimFunc)
 	{
-		if (arr[thisr][thisc].gotBomb || arr[thisr][thisc].isFlagged) return; // nonecount does not include mines, obviously
+		if (arr[thisr][thisc].gotBomb || arr[thisr][thisc].isFlagged) return;
 		
 		if (userInvoked)
 		{
-			arr[thisr][thisc].isShown = 1;
-			CallRevealAround(arr, thisr, thisc, rowcount, colcount, 0);
+			arr[thisr][thisc].isShown = 1; // show this cell
+			nonecount--; // decrement counter
+			CallRevealAround(arr, thisr, thisc, rowcount, colcount, 0); // invoke reveal on neighbouring cells
 		}
 		else
 		{
@@ -149,6 +174,7 @@ void ResetGrid(Box** grid, int rowcount, int colcount, int minecount)
 {
 	int& H = rowcount;
 	int& W = colcount;
+	nonecount = rowcount*colcount - minecount;
 	int h, w;
 	// hide and randomise the grid
 	for (h = 0; h < H; h++)
@@ -170,6 +196,8 @@ void ResetGrid(Box** grid, int rowcount, int colcount, int minecount)
 			minecount--;
 		}
 	}
+
+
 
 	RecalculateGrid(grid, rowcount, colcount);
 }

@@ -35,5 +35,6 @@ void RecalculateGrid(Box** grid, int rowcount, int colcount);
 void CallRevealAround(Box** grid, int thisr, int thisc, int rowcount, int colcount, BOOL userInvoked, BOOL invokeStartAnim = 0);
 void CallRevealOrtho(Box** grid, int thisr, int thisc, int rowcount, int colcount, BOOL userInvoked, BOOL invokeStartAnim = 0);
 int GetNvisible();
+int GetNoneCount();
 
 #endif

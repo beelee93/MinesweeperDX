@@ -32,6 +32,7 @@ ID2D1Bitmap *pSpriteSheet = NULL;			// pointer to bitmap of sprite sheet
 D2D1_RECT_F srcDraw, destDraw;				// drawing offsets
 
 int gameState = STATE_MAINMENU;				// game state
+int gameOverCondition = 0;
 int clickCount = 0;
 
 // enumerates the different tint colours for different number of bombs
@@ -47,14 +48,14 @@ D2D1::ColorF::Enum colorEnum[8] = { D2D1::ColorF::Violet,
 // sprite atlas data
 D2D1_RECT_F spriteAtlas[8] = 
 {
-	{ 0, 0, 48, 48 },				// shown, bomb
-	{ 0, 48, 48, 96 },				// shown, empty
-	{ 48, 0, 96, 48 },				// flagged
-	{ 48, 48, 96, 96 },				// unshown
-	{ 128, 0, 428, 96 },			// you win
-	{ 0, 128, 300, 224 },			// game over
-	{ 428, 0, 476, 48 },			// bomb icon
-	{ 428, 48, 476, 96 }			// clock icon
+	{ 0, 0, 48, 48 },				// 0 shown, bomb
+	{ 0, 48, 48, 96 },				// 1 shown, empty
+	{ 48, 0, 96, 48 },				// 2 flagged
+	{ 48, 48, 96, 96 },				// 3 unshown
+	{ 128, 0, 428, 96 },			// 4 you win
+	{ 0, 128, 300, 224 },			// 5 game over
+	{ 428, 0, 476, 48 },			// 6 bomb icon
+	{ 428, 48, 476, 96 }			// 7 clock icon
 };
 
 double fps = 0;
@@ -272,10 +273,17 @@ void OnPaint()
 		graphics->SetAlpha(1.0f);
 		graphics->Clear();
 
-		graphics->SetColor(0.0f, 0.0f, 0.0f);
+		graphics->SetColor(1.0f, 1.0f, 1.0f);
 		graphics->DrawString(debugMsg, 0, 0, 250.0f, 120.0f, 0);
 
-		DrawGrid();
+		switch (gameState)
+		{
+		case STATE_SETUP:
+		case STATE_READY:
+		case STATE_GAMEOVER:
+			DrawGrid();
+			break;
+		}
 
 		if (graphics->EndDraw() == DRAWSTATUS_INVOKE_DISCARD)
 			DiscardDeviceResources();
@@ -303,9 +311,17 @@ void OnUpdate(float elapsed)
 			highlightAlpha = 0.3f;
 		}
 
+		// update each cell
 		for (int r = 0; r < Nrow; r++)
 			for (int c = 0; c < Ncol; c++)
 				Update(playingGrid, playingGrid[r][c], elapsed, Nrow, Ncol);
+
+		// check for winning condition
+		if (GetNoneCount() <= 0)
+		{
+			gameState = STATE_GAMEOVER;
+			gameOverCondition = GAMEOVER_WIN;
+		}
 	}
 	break;
 
@@ -323,7 +339,7 @@ void OnUpdate(float elapsed)
 
 	}
 	
-	swprintf_s(debugMsg, 256, L"READY: %d FPS: %f\tMOUSE: %d,%d", gameState==STATE_READY? 1:0,fps, cell.x, cell.y);
+	swprintf_s(debugMsg, 256, L"READY: %d FPS: %f\tMOUSE: %d,%d NONECOUNT: %d", gameState == STATE_READY ? 1 : 0, fps, cell.x, cell.y, GetNoneCount());
 }
 
 // =========================================================
@@ -415,11 +431,37 @@ void DrawGrid()
 	}
 
 	// draw the highlighting rectangle
-	if (drawHighlight && playingGrid[cell.y][cell.x].visible)
+	if (drawHighlight && gameState == STATE_READY && playingGrid[cell.y][cell.x].visible)
 	{
 		graphics->SetColor(1.0f, 1.0f, 1.0f);
 		graphics->SetAlpha(highlightAlpha);
 		graphics->DrawRectangle(gridTL.x + cell.x*boxSize, gridTL.y + cell.y*boxSize, boxSize, boxSize, 1.2f, 1);
+	}
+
+	if (gameState == STATE_GAMEOVER)
+	{
+		float wndWidth, wndHeight;
+		wndWidth = windowRect.right - windowRect.left;
+		wndHeight = windowRect.bottom - windowRect.top;
+
+		// draw a black rectangle
+		graphics->SetColor(0, 0, 0);
+		graphics->SetAlpha(0.65f);
+		destDraw.top = destDraw.left = 0;
+		destDraw.right = windowRect.right;
+		destDraw.bottom = windowRect.bottom;
+		graphics->DrawRectangle(0, 0, wndWidth, wndHeight, 1.0f, 1);
+		graphics->SetAlpha();
+		graphics->SetColor(1, 1, 1);
+
+		destDraw.left = wndWidth / 2.0f - 150.0f;
+		destDraw.top = wndHeight / 2.0f - 48.0f;
+		destDraw.right = destDraw.left + 300.0f;
+		destDraw.bottom = destDraw.top + 96.0f;
+		
+		srcDraw = spriteAtlas[gameOverCondition == GAMEOVER_LOSE ? 5 : 4];
+
+		graphics->DrawSprite(srcDraw, destDraw, pSpriteSheet);
 	}
 
 }
@@ -580,6 +622,7 @@ void OnReadyStateForMouse(int button)
 
 					// since we clicked on a bomb, it's game over
 					gameState = STATE_GAMEOVER;
+					gameOverCondition = GAMEOVER_LOSE;
 				}
 				else
 				{
@@ -614,6 +657,5 @@ void OnReadyStateForMouse(int button)
 				clickCount++;
 			}
 		}
-
 	}
 }

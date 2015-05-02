@@ -12,6 +12,8 @@
 #define STATE_GAMEOVER	0x02
 #define STATE_MAINMENU	0x10
 
+#define GAMEOVER_LOSE	0x00
+#define GAMEOVER_WIN	0x01
 
 int APIENTRY			WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow);
 LRESULT CALLBACK		WndProc(HWND, UINT, WPARAM, LPARAM);
